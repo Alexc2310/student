@@ -1,27 +1,16 @@
-/*
- * MEDIDOR LCR CON ARDUINO
- * ========================
- * Versión para LCD 1602A (sin módulo I2C)
- * Botón con INPUT_PULLUP (solo conectar D2 a GND para cambiar modo)
- */
-
 #include <LiquidCrystal.h>
 
-// Pines LCD: RS, E, D4, D5, D6, D7
 LiquidCrystal lcd(12, 11, 5, 4, 3, 13);
 
-// Pines del circuito
 #define PIN_ANALOG      A0
 #define PIN_CHARGE      7
 #define PIN_DISCHARGE   8
 #define PIN_BUTTON      2
 
-// Resistencias de referencia
-const float R_REF = 10000.0;  // 10kΩ
+const float R_REF = 10000.0;
 const float V_REF = 5.0;
 const int THRESHOLD_63 = 648;
 
-// Modos
 enum Mode { MODE_R, MODE_C, MODE_L };
 Mode currentMode = MODE_R;
 
@@ -31,9 +20,7 @@ void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2);
   
-  // Botón con resistencia pull-up interna
   pinMode(PIN_BUTTON, INPUT_PULLUP);
-  
   pinMode(PIN_CHARGE, OUTPUT);
   pinMode(PIN_DISCHARGE, OUTPUT);
   
@@ -49,7 +36,6 @@ void setup() {
 }
 
 void loop() {
-  // Botón activo cuando se conecta a GND (lee LOW)
   if (digitalRead(PIN_BUTTON) == LOW) {
     if (millis() - lastButtonPress > 300) {
       lastButtonPress = millis();
@@ -125,34 +111,45 @@ void measureResistance() {
 }
 
 void measureCapacitance() {
+  lcd.setCursor(0, 1);
+  lcd.print("Descargando...  ");
+  
   // Descargar
   pinMode(PIN_CHARGE, INPUT);
   pinMode(PIN_DISCHARGE, OUTPUT);
   digitalWrite(PIN_DISCHARGE, LOW);
   
-  while (analogRead(PIN_ANALOG) > 0) {}
-  delay(50);
+  unsigned long dischargeStart = millis();
+  while (analogRead(PIN_ANALOG) > 10) {
+    if (millis() - dischargeStart > 10000) {
+      lcd.setCursor(0, 1);
+      lcd.print("C: Descarga lent");
+      return;
+    }
+  }
+  delay(100);
   
-  // Cargar
+  lcd.setCursor(0, 1);
+  lcd.print("Cargando...     ");
+  
+  // Cargar - D7 como INPUT para que cargue solo por el 10k
   pinMode(PIN_DISCHARGE, INPUT);
-  pinMode(PIN_CHARGE, OUTPUT);
+  pinMode(PIN_CHARGE, INPUT);
   
-  unsigned long startTime = micros();
-  digitalWrite(PIN_CHARGE, HIGH);
+  unsigned long startTime = millis();
   
   while (analogRead(PIN_ANALOG) < THRESHOLD_63) {
-    if (micros() - startTime > 3000000) {
+    if (millis() - startTime > 30000) {
       lcd.setCursor(0, 1);
       lcd.print("C: Timeout      ");
-      digitalWrite(PIN_CHARGE, LOW);
       return;
     }
   }
   
-  unsigned long elapsedTime = micros() - startTime;
-  digitalWrite(PIN_CHARGE, LOW);
+  unsigned long elapsedTime = millis() - startTime;
   
-  float capacitance = (elapsedTime / 1000000.0) / R_REF;
+  // Calcular: C = τ / R (tiempo en segundos)
+  float capacitance = (elapsedTime / 1000.0) / R_REF;
   
   String unit;
   if (capacitance >= 1e-3) {
@@ -161,24 +158,16 @@ void measureCapacitance() {
   } else if (capacitance >= 1e-6) {
     capacitance *= 1000000.0;
     unit = " uF";
-  } else if (capacitance >= 1e-9) {
+  } else {
     capacitance *= 1000000000.0;
     unit = " nF";
-  } else {
-    capacitance *= 1000000000000.0;
-    unit = " pF";
   }
   
   lcd.setCursor(0, 1);
   lcd.print("C: ");
-  lcd.print(capacitance, 2);
+  lcd.print(capacitance, 1);
   lcd.print(unit);
   lcd.print("    ");
-  
-  // Descargar
-  pinMode(PIN_DISCHARGE, OUTPUT);
-  digitalWrite(PIN_DISCHARGE, LOW);
-  delay(50);
 }
 
 void measureInductance() {
