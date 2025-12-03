@@ -4,10 +4,8 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 13);
 
 void setup() {
   lcd.begin(16, 2);
-  pinMode(7, OUTPUT);
-  pinMode(8, OUTPUT);
-  digitalWrite(7, LOW);
-  digitalWrite(8, LOW);
+  pinMode(7, INPUT);    // D7 como entrada (no interfiere)
+  pinMode(8, INPUT);    // D8 como entrada (no interfiere)
 }
 
 void loop() {
@@ -19,7 +17,7 @@ void loop() {
   lcd.print("    ");
   
   lcd.setCursor(0, 1);
-  lcd.print("D7:OFF D8:LOW");
+  lcd.print("Carga por 10k");
   
-  delay(200);
+  delay(100);
 }
