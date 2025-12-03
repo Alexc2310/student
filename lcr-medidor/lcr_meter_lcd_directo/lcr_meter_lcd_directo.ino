@@ -32,7 +32,6 @@ void setup() {
   lcd.begin(16, 2);
   
   // Botón con resistencia pull-up interna
-  // Solo necesitas conectar D2 a GND para activar
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   
   pinMode(PIN_CHARGE, OUTPUT);
@@ -79,110 +78,4 @@ void showMode() {
   switch (currentMode) {
     case MODE_R: lcd.print("Modo: RESISTENC"); break;
     case MODE_C: lcd.print("Modo: CAPACITAN"); break;
-    case MODE_L: lcd.print("Modo: INDUCTANC"); break;
-  }
-  
-  lcd.setCursor(0, 1);
-  lcd.print("Midiendo...");
-  delay(300);
-}
-
-void measureResistance() {
-  pinMode(PIN_CHARGE, INPUT);
-  pinMode(PIN_DISCHARGE, INPUT);
-  
-  int rawADC = analogRead(PIN_ANALOG);
-  float voltage = (rawADC / 1023.0) * V_REF;
-  
-  lcd.setCursor(0, 1);
-  
-  if (rawADC < 10) {
-    lcd.print("R: Sin conexion ");
-    return;
-  }
-  
-  if (rawADC > 1013) {
-    lcd.print("R: Corto/0 Ohm  ");
-    return;
-  }
-  
-  float resistance = R_REF * (voltage / (V_REF - voltage));
-  
-  String unit;
-  if (resistance >= 1000000) {
-    resistance /= 1000000.0;
-    unit = " MOhm";
-  } else if (resistance >= 1000) {
-    resistance /= 1000.0;
-    unit = " kOhm";
-  } else {
-    unit = " Ohm";
-  }
-  
-  lcd.print("R: ");
-  lcd.print(resistance, 2);
-  lcd.print(unit);
-  lcd.print("    ");
-}
-
-void measureCapacitance() {
-  // Descargar
-  pinMode(PIN_CHARGE, INPUT);
-  pinMode(PIN_DISCHARGE, OUTPUT);
-  digitalWrite(PIN_DISCHARGE, LOW);
-  
-  while (analogRead(PIN_ANALOG) > 0) {}
-  delay(50);
-  
-  // Cargar
-  pinMode(PIN_DISCHARGE, INPUT);
-  pinMode(PIN_CHARGE, OUTPUT);
-  
-  unsigned long startTime = micros();
-  digitalWrite(PIN_CHARGE, HIGH);
-  
-  while (analogRead(PIN_ANALOG) < THRESHOLD_63) {
-    if (micros() - startTime > 3000000) {
-      lcd.setCursor(0, 1);
-      lcd.print("C: Timeout      ");
-      digitalWrite(PIN_CHARGE, LOW);
-      return;
-    }
-  }
-  
-  unsigned long elapsedTime = micros() - startTime;
-  digitalWrite(PIN_CHARGE, LOW);
-  
-  float capacitance = (elapsedTime / 1000000.0) / R_REF;
-  
-  String unit;
-  if (capacitance >= 1e-3) {
-    capacitance *= 1000.0;
-    unit = " mF";
-  } else if (capacitance >= 1e-6) {
-    capacitance *= 1000000.0;
-    unit = " uF";
-  } else if (capacitance >= 1e-9) {
-    capacitance *= 1000000000.0;
-    unit = " nF";
-  } else {
-    capacitance *= 1000000000000.0;
-    unit = " pF";
-  }
-  
-  lcd.setCursor(0, 1);
-  lcd.print("C: ");
-  lcd.print(capacitance, 2);
-  lcd.print(unit);
-  lcd.print("    ");
-  
-  // Descargar
-  pinMode(PIN_DISCHARGE, OUTPUT);
-  digitalWrite(PIN_DISCHARGE, LOW);
-  delay(50);
-}
-
-void measureInductance() {
-  lcd.setCursor(0, 1);
-  lcd.print("L: No disponible");
-}
+    case MODE_L: lcd.print("Modo: INDUCTANC"); b
